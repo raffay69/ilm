@@ -105,6 +105,7 @@ app.post('/render',authMiddleware ,  async (req, res) => {
           console.log(`deleted ${filename}.py`)
           await execPromisified(`rm -rf ./media/videos/${filename}`)
           console.log(`deleted ./media/videos/${filename}`)
+          return res.status(500).json({ error: "Video rendering failed", details: error.message })
         }
         const videopath = `./media/videos/${filename}/${quality==="low"?"480p15":"1080p60"}/${filename}.mp4`
         const videoURL = await uploadToCloud(videopath)

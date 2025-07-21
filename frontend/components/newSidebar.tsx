@@ -1,7 +1,6 @@
 "use client"
 import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {Trash} from "lucide-react"
 import { toast } from "sonner"
 import { Skeleton } from "./ui/skeleton"
@@ -36,8 +35,6 @@ type ContentItem = {
 export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideoURL , setGenerationState }: ClaudeSidebarProps) {
     const [content, setContent] = useState<ContentItem[]>([]);
     const [loading, setLoading] = useState(true);
-   const pathName = usePathname()
-   const router = useRouter()
    const {isSignedIn , getToken} = useAuth()
    const {user} = useUser()
 
@@ -45,7 +42,7 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
    const fetchData = async () => {
     try {
       const token = await getToken()
-      const res = await axios.get('http://localhost:4000/db/recents' , {
+      const res = await axios.get('https://ilm-0xfm.onrender.com/db/recents' , {
         headers : {
           Authorization :  `Bearer ${token}`
         }
@@ -67,7 +64,7 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
     console.log(`from the delete func ${fileName}`)
     const token = await getToken()
     try{
-    await axios.put('http://localhost:4000/db/remove' , { 
+    await axios.put('https://ilm-0xfm.onrender.com/db/remove' , { 
       fileName : fileName
     },{
       headers : {
@@ -183,7 +180,9 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
                       <DialogClose asChild>
                         <Button className="bg-black text-white">Cancel</Button>
                       </DialogClose>
+                      <DialogClose asChild>
                       <Button className="text-red-500 bg-black" onClick={()=>deleteChat(item.fileName)}>Delete</Button>
+                      </DialogClose>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
