@@ -184,7 +184,7 @@ export default function AppPage() {
         <p className="text-md font-arabic">
           If you like what you see, show some ❤️ and 
           <a
-            href="https://github.com/your-username/your-repo"
+            href="https://github.com/raffay69/ilm"
             target="_blank"
             rel="noopener noreferrer"
             className="text-secondary-900 ml-1 underline"
