@@ -80,7 +80,7 @@ app.post('/generate' , authMiddleware ,  async (req, res)=>{
     const {userPrompt} = req.body
     try{
     const data = await generateCode(userPrompt)
-    res.json(data)
+    if(data) res.json(data)
     }
     catch(e){
         console.log(e.message)
@@ -314,6 +314,7 @@ class FullConceptExample(VoiceoverScene):
 IMPORTANT!!! — Make sure that:
 - ❌ Text elements NEVER overlap each other 
 - ❌ DO NOT USE ANY "SVG" !! They are not available and will throw Error !! DO NOT USE THEM 
+- ❌ DO NOT USE ANT "PNG" FILES !!! They are not available and will throw an Error !! DO NOT USE THEM
 - ❌ Do NOT use modules like 'random', 'numpy', 'np', or 'math'. If you absolutely MUST use them, you MUST include the proper import statements (e.g., 'import random', 'import numpy as np') at the top of the code. Otherwise, it will break with a NameError.
 - ✅ Old text is ALWAYS faded out before showing new text (use self.play(FadeOut(...)))
 - ✅ Text is ALWAYS within the screen bounds and does NOT go off-screen
@@ -327,7 +328,8 @@ IMPORTANT!!! — Make sure that:
 🧠 NOW GENERATE:
 Generate the explanation and the code based on the following user prompt:  ${userPrompt}
 `
-        const response = await ai.models.generateContent({
+    try{
+     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: manimPrompt,
       config: {
@@ -348,4 +350,8 @@ Generate the explanation and the code based on the following user prompt:  ${use
     });
     console.log(response.text)
     return JSON.parse(response.text);
+  }catch(e){
+    console.log(e.message)
+    throw new Error(`Failed to generate code: ${e.message}`)
+  }
   }

@@ -41,10 +41,10 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
 
    const fetchData = async () => {
     try {
-      const token = await getToken()
+      
       const res = await axios.get('https://ilm-0xfm.onrender.com/db/recents' , {
         headers : {
-          Authorization :  `Bearer ${token}`
+          Authorization :  `Bearer ${await getToken()}`
         }
       })
       const sortedContent = res.data
@@ -62,13 +62,12 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
 
   async function deleteChat(fileName:String){
     console.log(`from the delete func ${fileName}`)
-    const token = await getToken()
     try{
     await axios.put('https://ilm-0xfm.onrender.com/db/remove' , { 
       fileName : fileName
     },{
       headers : {
-        Authorization : `Bearer ${token}`
+        Authorization : `Bearer ${await getToken()}`
       }
     })
     toast.success("Chat deleted successfully")
