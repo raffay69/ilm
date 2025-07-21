@@ -82,7 +82,7 @@ export default function AppPage() {
     setVideoUrl(null)
 
     //content generation api call
-    const res1 = await axios.post('https://ilm-0xfm.onrender.com/generate',{userPrompt : prompt} , {
+    const res1 = await axios.post('http://localhost:4000/generate',{userPrompt : prompt} , {
       headers : {
         Authorization : `Bearer ${await getToken()}`
       }
@@ -95,7 +95,7 @@ export default function AppPage() {
         })
     setGenerationState("generating-video")
     //video generation api call
-   const res2 = await axios.post('https://ilm-0xfm.onrender.com/render' , {filename: res1.data.fileName , manimCode : res1.data.manimCode , quality : videoQuality} , {
+   const res2 = await axios.post('http://localhost:4000/render' , {filename: res1.data.fileName , manimCode : res1.data.manimCode , quality : videoQuality} , {
     headers : {
       Authorization : `Bearer ${await  getToken()}`
     }
@@ -115,7 +115,7 @@ export default function AppPage() {
     //make a call to the db
     if(content && videoQuality && videoURL && fileName){
       try{
-      const res = await axios.post('https://ilm-0xfm.onrender.com/db/save' , {
+      const res = await axios.post('http://localhost:4000/db/save' , {
         content : content , 
         quality : videoQuality,
         videoURL : videoURL,

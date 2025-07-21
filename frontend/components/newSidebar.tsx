@@ -42,7 +42,7 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
    const fetchData = async () => {
     try {
       
-      const res = await axios.get('https://ilm-0xfm.onrender.com/db/recents' , {
+      const res = await axios.get('http://localhost:4000/db/recents' , {
         headers : {
           Authorization :  `Bearer ${await getToken()}`
         }
@@ -63,7 +63,7 @@ export function ClaudeSidebar({isOpen, setIsOpen , color , setResults , setVideo
   async function deleteChat(fileName:String){
     console.log(`from the delete func ${fileName}`)
     try{
-    await axios.put('https://ilm-0xfm.onrender.com/db/remove' , { 
+    await axios.put('http://localhost:4000/db/remove' , { 
       fileName : fileName
     },{
       headers : {
