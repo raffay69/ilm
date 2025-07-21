@@ -105,7 +105,7 @@ app.post('/render',authMiddleware ,  async (req, res) => {
           console.log(`deleted ${filename}.py`)
           await execPromisified(`rm -rf ./media/videos/${filename}`)
           console.log(`deleted ./media/videos/${filename}`)
-          return res.status(500).json({ error: "Video rendering failed", details: error.message })
+          return res.status(500).json({ error: "Video rendering failed", details: e.message })
         }
         const videopath = `./media/videos/${filename}/${quality==="low"?"480p15":"1080p60"}/${filename}.mp4`
         const videoURL = await uploadToCloud(videopath)
@@ -114,9 +114,9 @@ app.post('/render',authMiddleware ,  async (req, res) => {
         await execPromisified(`rm -rf ./media/videos/${filename}`)
         console.log(`deleted ./media/videos/${filename}`)
         res.json({ videoURL: videoURL  })
-    } catch (error) {
-        console.error("Render failed:", error)
-        res.status(500).json({ error: "Video rendering failed", details: error.message })
+    } catch (e) {
+        console.error("Render failed:", e)
+        res.status(500).json({ error: "Video rendering failed", details: e.message })
     }
 })
 
@@ -313,8 +313,10 @@ class FullConceptExample(VoiceoverScene):
 
 IMPORTANT!!! — Make sure that:
 - ❌ Text elements NEVER overlap each other 
-- ❌ DO NOT USE ANY "SVG" !! They are not available and will throw Error !! DO NOT USE THEM 
-- ❌ DO NOT USE ANT "PNG" FILES !!! They are not available and will throw an Error !! DO NOT USE THEM
+- ❌ CRITICAL: NO IMAGE FILES OR GRAPHICS ALLOWED AT ALL!
+- ❌ Do NOT use: .png, .jpg, .jpeg, .gif, .svg, .webp, .ico or ANY image files
+- ❌ Do NOT use: SVG code, <svg> tags, or any vector graphics
+- ❌ Do NOT use: Canvas drawings or any graphics generation
 - ❌ Do NOT use modules like 'random', 'numpy', 'np', or 'math'. If you absolutely MUST use them, you MUST include the proper import statements (e.g., 'import random', 'import numpy as np') at the top of the code. Otherwise, it will break with a NameError.
 - ✅ Old text is ALWAYS faded out before showing new text (use self.play(FadeOut(...)))
 - ✅ Text is ALWAYS within the screen bounds and does NOT go off-screen
