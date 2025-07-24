@@ -1,143 +1,142 @@
-import express from 'express'
-import {exec} from 'child_process'
-import util from 'util'
-import fs from 'fs'
-import { fileURLToPath } from 'url'
-import { dirname, resolve }  from 'path'
-import cors from 'cors'
-import {v2 as cloudinary} from 'cloudinary'
+import express from "express";
+import { exec } from "child_process";
+import util from "util";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+import cors from "cors";
+import { v2 as cloudinary } from "cloudinary";
 import { GoogleGenAI, Type } from "@google/genai";
-import 'dotenv/config'
-import { authMiddleware } from './middleware.mjs'
-import { dataModel } from './database.mjs'
+import "dotenv/config";
+import { authMiddleware } from "./middleware.mjs";
+import { dataModel } from "./database.mjs";
 
-
-const ai = new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
+const execPromisified = util.promisify(exec);
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const app = express();
+app.use(express.json());
+app.use(cors());
 
-const execPromisified = util.promisify(exec)
+app.listen(4000, () => {
+  console.log("running on 4000");
+});
 
-const app = express()
-app.use(express.json())
-app.use(cors())
-
-app.listen(4000,()=>{
-    console.log("running on 4000")
-})
-  
-
-
-app.post('/db/save' , authMiddleware , async (req,res)=>{
-  const { content , quality  , videoURL , fileName } = req.body
-  const userID = req.userID
-  try{
-  await dataModel.create({
-    userID : userID,
-    fileName : fileName,
-    content : content,
-    videoURL : videoURL,
-    quality : quality
-  })
-  res.status(200).json({message : "saved in DB"})
-  }catch(e){
-    res.status(500).json({message : e.message})
+app.post("/db/save", authMiddleware, async (req, res) => {
+  const { content, quality, videoURL, fileName } = req.body;
+  const userID = req.userID;
+  try {
+    await dataModel.create({
+      userID: userID,
+      fileName: fileName,
+      content: content,
+      videoURL: videoURL,
+      quality: quality,
+    });
+    res.status(200).json({ message: "saved in DB" });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
   }
-})  
+});
 
-app.get('/db/recents' , authMiddleware , async (req, res)=>{
-  const userID = req.userID
-  const data = await dataModel.find({userID : userID}).sort({createdAt: -1})
-  res.json(data)
-})
+app.get("/db/recents", authMiddleware, async (req, res) => {
+  const userID = req.userID;
+  const data = await dataModel.find({ userID: userID }).sort({ createdAt: -1 });
+  res.json(data);
+});
 
-
-app.put('/db/remove' , authMiddleware , async (req,res)=>{
-  const {fileName} = req.body
-  const userID = req.userID
-  try{
-  await dataModel.deleteOne({userID : userID , fileName : fileName})
-  res.status(200).json({message : "deleted succesfully"})
-  }catch(e){
-    res.status(500).json({message : `error deleting -> ${e.message}`})
-    console.log(e.message)
+app.put("/db/remove", authMiddleware, async (req, res) => {
+  const { fileName } = req.body;
+  const userID = req.userID;
+  try {
+    await dataModel.deleteOne({ userID: userID, fileName: fileName });
+    res.status(200).json({ message: "deleted succesfully" });
+  } catch (e) {
+    res.status(500).json({ message: `error deleting -> ${e.message}` });
+    console.log(e.message);
   }
-})
+});
 
+// gemini endpoint
+app.post("/generate", authMiddleware, async (req, res) => {
+  const { userPrompt } = req.body;
+  try {
+    const data = await generateCode(userPrompt);
+    if (data) res.json(data);
+  } catch (e) {
+    console.log(e.message);
+    res.status(500).json({ error: `Error generating content : ${e.message} ` });
+  }
+});
 
-// gemini endpoint 
-app.post('/generate' , authMiddleware ,  async (req, res)=>{
-    const {userPrompt} = req.body
-    try{
-    const data = await generateCode(userPrompt)
-    if(data) res.json(data)
-    }
-    catch(e){
-        console.log(e.message)
-        res.status(500).json({ error: `Error generating content : ${e.message} ` })   
-     }
-})
-
-
-app.post('/render',authMiddleware ,  async (req, res) => {
+app.post("/render", authMiddleware, async (req, res) => {
+  try {
+    const { filename, manimCode, quality } = req.body;
+    const out = await execPromisified(`touch ${filename}.py`);
+    const filepath = resolve(__dirname, `${filename}.py`);
+    fs.writeFileSync(filepath, manimCode);
     try {
-        const { filename , manimCode , quality } = req.body 
-        const out = await execPromisified(`touch ${filename}.py`)
-        const filepath = resolve(__dirname , `${filename}.py`)
-        fs.writeFileSync(filepath , manimCode)
-        try{
-        const {stdout , stderr} = await execPromisified(`python -m manim ${filename}.py -q${quality==='low'?"l":"h"} --output_file ./${filename}.mp4`)
-        console.log(stdout)
-        console.log(stderr) 
-         }catch(e){
-          console.log(`build failed ${e.message}`)
-          await execPromisified(`rm ${filename}.py`)
-          console.log(`deleted ${filename}.py`)
-          await execPromisified(`rm -rf ./media/videos/${filename}`)
-          console.log(`deleted ./media/videos/${filename}`)
-          return res.status(500).json({ error: "Video rendering failed", details: e.message })
-        }
-        const videopath = `./media/videos/${filename}/${quality==="low"?"480p15":"1080p60"}/${filename}.mp4`
-        const videoURL = await uploadToCloud(videopath)
-        await execPromisified(`rm ${filename}.py`)
-        console.log(`deleted ${filename}.py`)
-        await execPromisified(`rm -rf ./media/videos/${filename}`)
-        console.log(`deleted ./media/videos/${filename}`)
-        res.json({ videoURL: videoURL  })
+      const { stdout, stderr } = await execPromisified(
+        `python -m manim ${filename}.py -q${
+          quality === "low" ? "l" : "h"
+        } --output_file ./${filename}.mp4`
+      );
+      console.log(stdout);
+      console.log(stderr);
     } catch (e) {
-        console.error("Render failed:", e)
-        res.status(500).json({ error: "Video rendering failed", details: e.message })
+      console.log(`build failed ${e.message}`);
+      await execPromisified(`rm ${filename}.py`);
+      console.log(`deleted ${filename}.py`);
+      await execPromisified(`rm -rf ./media/videos/${filename}`);
+      console.log(`deleted ./media/videos/${filename}`);
+      return res
+        .status(500)
+        .json({ error: "Video rendering failed", details: e.message });
     }
-})
+    const videopath = `./media/videos/${filename}/${
+      quality === "low" ? "480p15" : "1080p60"
+    }/${filename}.mp4`;
+    const videoURL = await uploadToCloud(videopath);
+    await execPromisified(`rm ${filename}.py`);
+    console.log(`deleted ${filename}.py`);
+    await execPromisified(`rm -rf ./media/videos/${filename}`);
+    console.log(`deleted ./media/videos/${filename}`);
+    res.json({ videoURL: videoURL });
+  } catch (e) {
+    console.error("Render failed:", e);
+    res
+      .status(500)
+      .json({ error: "Video rendering failed", details: e.message });
+  }
+});
 
-
-async function uploadToCloud(filepath){
-    try {
-        const result = await cloudinary.uploader.upload(filepath, {
-          resource_type: 'video',
-          folder: 'videos', 
-          use_filename: true,
-          unique_filename: false,
-        });
-        console.log('Upload successful:', result.secure_url);
-        return result.secure_url;
-      } catch (error) {
-        console.error('Upload failed:', error);
-      }
+async function uploadToCloud(filepath) {
+  try {
+    const result = await cloudinary.uploader.upload(filepath, {
+      resource_type: "video",
+      folder: "videos",
+      use_filename: true,
+      unique_filename: false,
+    });
+    console.log("Upload successful:", result.secure_url);
+    return result.secure_url;
+  } catch (error) {
+    console.error("Upload failed:", error);
+  }
 }
 
 async function generateCode(userPrompt) {
-    const manimPrompt = `
+  const manimPrompt = `
 You are an expert in the Manim animation library.  
 Generate a clean, error-free Manim script that visually explains any **educational concept** (not just algorithms) using a concrete example.
 
@@ -329,31 +328,31 @@ IMPORTANT!!! — Make sure that:
 
 🧠 NOW GENERATE:
 Generate the explanation and the code based on the following user prompt:  ${userPrompt}
-`
-    try{
-     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+`;
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
       contents: manimPrompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              content: { type: Type.STRING },          
-              fileName: { type: Type.STRING },
-              manimCode: { type: Type.STRING }
-            },
-            required: ["content", "fileName", "manimCode"] 
+          type: Type.OBJECT,
+          properties: {
+            content: { type: Type.STRING },
+            fileName: { type: Type.STRING },
+            manimCode: { type: Type.STRING },
           },
+          required: ["content", "fileName", "manimCode"],
+        },
         thinkingConfig: {
-          thinkingBudget: 0
-        }
-      }
+          thinkingBudget: -1,
+        },
+      },
     });
-    console.log(response.text)
+    console.log(response.text);
     return JSON.parse(response.text);
-  }catch(e){
-    console.log(e.message)
-    throw new Error(`Failed to generate code: ${e.message}`)
+  } catch (e) {
+    console.log(e.message);
+    throw new Error(`Failed to generate code: ${e.message}`);
   }
-  }
+}
